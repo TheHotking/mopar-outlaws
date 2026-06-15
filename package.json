@@ -1,0 +1,17 @@
+{
+  "name": "mopar-retro-cruiser",
+  "version": "1.0.0",
+  "description": "Retro pixel-art Flappy Car game for Mopar Car Club",
+  "scripts": {
+    "start": "npx http-server -p 8080 ./"
+  },
+  "keywords": [
+    "mopar",
+    "game",
+    "pixel-art",
+    "flappy-bird",
+    "html5-canvas"
+  ],
+  "author": "Mopar Car Club",
+  "license": "MIT"
+}
