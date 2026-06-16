@@ -1470,19 +1470,6 @@ select:focus {
 
                 <!-- Game Modes / Levels & Action -->
                 <div class="action-box">
-                    <!-- Control Scheme Toggle -->
-                    <div class="control-toggle-container">
-                        <span class="toggle-label">MOBILE CONTROLS:</span>
-                        <div class="toggle-buttons">
-                            <button type="button" id="control-btn-arrows" class="toggle-btn">
-                                TAP ARROWS
-                            </button>
-                            <button type="button" id="control-btn-slide" class="toggle-btn">
-                                FINGER SLIDE
-                            </button>
-                        </div>
-                    </div>
-                    
                     <button id="start-btn" class="btn-primary pulse">
                         START ESCAPE
                         <span class="btn-subtext">Outrun the Police & Dodge roadblocks</span>
@@ -1564,16 +1551,22 @@ select:focus {
                     <div class="tap-icon">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
                     </div>
-                    <p>SLIDE FINGER UP/DOWN TO STEER<br>(OR USE ARROWS / SPACEBAR)</p>
+                    <p>TAP ARROWS TO STEER<br>(OR USE ARROW KEYS)</p>
                 </div>
 
-                <!-- Mobile Arrow Buttons -->
-                <div class="mobile-arrows-container">
-                    <button id="mobile-arrow-up" class="mobile-arrow-btn" aria-label="Move Up">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                <!-- Lane Control Buttons (Left side: Top / Middle / Bottom) -->
+                <div class="lane-controls-panel">
+                    <button id="lane-btn-top" class="lane-btn" aria-label="Top Lane">
+                        <!-- Up arrow -->
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
                     </button>
-                    <button id="mobile-arrow-down" class="mobile-arrow-btn" aria-label="Move Down">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    <button id="lane-btn-mid" class="lane-btn lane-btn-mid" aria-label="Middle Lane">
+                        <!-- Left arrow = return to middle -->
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <button id="lane-btn-bot" class="lane-btn" aria-label="Bottom Lane">
+                        <!-- Down arrow -->
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
                 </div>
             </div>

@@ -133,51 +133,27 @@ const Game = {
             window.addEventListener('mouseup', handleMouseUp);
         });
 
-        // Virtual mobile arrow buttons
-        const mobileUp = document.getElementById('mobile-arrow-up');
-        const mobileDown = document.getElementById('mobile-arrow-down');
+        // Lane control buttons (Left panel: Top / Middle / Bottom)
+        const laneBtnTop = document.getElementById('lane-btn-top');
+        const laneBtnMid = document.getElementById('lane-btn-mid');
+        const laneBtnBot = document.getElementById('lane-btn-bot');
         
-        if (mobileUp) {
-            const triggerUp = (e) => {
+        const makeLaneHandler = (btn, laneIndex) => {
+            if (!btn) return;
+            const handler = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.changeLane(-1);
+                this.setLane(laneIndex);
+                btn.classList.add('pressed');
+                setTimeout(() => btn.classList.remove('pressed'), 150);
             };
-            mobileUp.addEventListener('touchstart', triggerUp, { passive: false });
-            mobileUp.addEventListener('mousedown', triggerUp);
-        }
+            btn.addEventListener('touchstart', handler, { passive: false });
+            btn.addEventListener('mousedown', handler);
+        };
         
-        if (mobileDown) {
-            const triggerDown = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.changeLane(1);
-            };
-            mobileDown.addEventListener('touchstart', triggerDown, { passive: false });
-            mobileDown.addEventListener('mousedown', triggerDown);
-        }
-        
-        // Setup Control Mode Toggle
-        const btnArrows = document.getElementById('control-btn-arrows');
-        const btnSlide = document.getElementById('control-btn-slide');
-        
-        window.controlMode = localStorage.getItem('mopar_outlaws_control_mode') || 'arrows';
-        this.updateControlModeUI();
-        
-        if (btnArrows) {
-            btnArrows.addEventListener('click', () => {
-                window.controlMode = 'arrows';
-                localStorage.setItem('mopar_outlaws_control_mode', 'arrows');
-                this.updateControlModeUI();
-            });
-        }
-        if (btnSlide) {
-            btnSlide.addEventListener('click', () => {
-                window.controlMode = 'slide';
-                localStorage.setItem('mopar_outlaws_control_mode', 'slide');
-                this.updateControlModeUI();
-            });
-        }
+        makeLaneHandler(laneBtnTop, 0);
+        makeLaneHandler(laneBtnMid, 1);
+        makeLaneHandler(laneBtnBot, 2);
         
         // Keyboard controls (Up/Down arrows, Spacebar)
         window.addEventListener('keydown', (e) => {
@@ -236,30 +212,7 @@ const Game = {
         if (hudHighScore) hudHighScore.textContent = this.highScore;
     },
     
-    updateControlModeUI() {
-        const btnArrows = document.getElementById('control-btn-arrows');
-        const btnSlide = document.getElementById('control-btn-slide');
-        const mobileArrows = document.querySelector('.mobile-arrows-container');
-        const instructionText = document.querySelector('#tap-instruction p');
-        
-        if (window.controlMode === 'slide') {
-            if (btnArrows) btnArrows.classList.remove('active');
-            if (btnSlide) btnSlide.classList.add('active');
-            if (mobileArrows) mobileArrows.style.display = 'none';
-            if (instructionText) {
-                instructionText.innerHTML = 'SLIDE FINGER UP/DOWN TO STEER<br>(OR USE ARROWS / SPACEBAR)';
-            }
-        } else {
-            if (btnArrows) btnArrows.classList.add('active');
-            if (btnSlide) btnSlide.classList.remove('active');
-            if (mobileArrows) {
-                mobileArrows.style.setProperty('display', '', '');
-            }
-            if (instructionText) {
-                instructionText.innerHTML = 'TAP ON-SCREEN ARROWS TO STEER<br>(OR USE ARROWS / SPACEBAR)';
-            }
-        }
-    },
+    
     
     addScore(amount) {
         this.score += amount;
@@ -318,43 +271,13 @@ const Game = {
     },
     
     handleTouchInput(e) {
-        if (this.state !== 'playing') {
-            if (this.state === 'crashed') {
-                const timeSinceCrash = performance.now() - this.crashTime;
-                if (timeSinceCrash > 500) {
-                    this.resetGame('playing');
-                }
+        // Tap canvas area to restart after a crash
+        if (this.state === 'crashed') {
+            const timeSinceCrash = performance.now() - this.crashTime;
+            if (timeSinceCrash > 500) {
+                this.resetGame('playing');
             }
-            return;
         }
-        
-        if (window.controlMode !== 'slide') return;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        let clientY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clientY = e.touches[0].clientY;
-        } else if (e.changedTouches && e.changedTouches.length > 0) {
-            clientY = e.changedTouches[0].clientY;
-        } else {
-            clientY = e.clientY;
-        }
-        
-        const relativeY = ((clientY - rect.top) / rect.height) * this.V_HEIGHT;
-        
-        // Map relativeY to lanes (0, 1, 2)
-        // Thresholds based on average lane centers: 353 and 466
-        let targetLane = 1;
-        if (relativeY < 353) {
-            targetLane = 0;
-        } else if (relativeY < 466) {
-            targetLane = 1;
-        } else {
-            targetLane = 2;
-        }
-        
-        this.setLane(targetLane);
     },
     
     createSkidParticles() {
@@ -546,8 +469,7 @@ const Game = {
         document.getElementById('hud-level-val').textContent = this.level;
         document.getElementById('hud-speed-val').textContent = `${Math.round(60 + this.gameSpeed * 10)} MPH`;
         
-        this.updateControlModeUI();
-        
+
         // Reset Progress Bar
         const progFill = document.getElementById('race-progress-fill');
         const progMark = document.getElementById('race-progress-marker');
