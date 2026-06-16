@@ -98,11 +98,21 @@ const Game = {
         if (restartBtn) restartBtn.addEventListener('click', () => this.resetGame('playing'));
         if (menuBtn) menuBtn.addEventListener('click', () => this.resetGame('menu'));
         
-        // Touch controls split screen (Top half = Move Up, Bottom half = Move Down)
+        // Touch controls (Slide up/down to steer)
         const canvasContainer = document.getElementById('canvas-container');
         canvasContainer.addEventListener('mousedown', (e) => this.handleTouchInput(e));
         canvasContainer.addEventListener('touchstart', (e) => {
             e.preventDefault(); // Stop double taps zooming on mobile
+            this.handleTouchInput(e);
+        }, { passive: false });
+        
+        canvasContainer.addEventListener('mousemove', (e) => {
+            if (e.buttons === 1) { // Left mouse button held down
+                this.handleTouchInput(e);
+            }
+        });
+        canvasContainer.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Stop page scrolling
             this.handleTouchInput(e);
         }, { passive: false });
         
@@ -185,9 +195,17 @@ const Game = {
             nextLane = Math.max(0, Math.min(this.numLanes - 1, nextLane));
         }
         
-        if (nextLane !== this.player.currentLane) {
-            this.player.currentLane = nextLane;
-            this.player.targetY = this.getLaneCenterY(nextLane) - this.player.height / 2;
+        this.setLane(nextLane);
+    },
+    
+    setLane(laneIndex) {
+        if (this.state !== 'playing') return;
+        
+        laneIndex = Math.max(0, Math.min(this.numLanes - 1, laneIndex));
+        
+        if (laneIndex !== this.player.currentLane) {
+            this.player.currentLane = laneIndex;
+            this.player.targetY = this.getLaneCenterY(laneIndex) - this.player.height / 2;
             this.createSkidParticles();
             
             // Play chiptune lane shift audio
@@ -222,11 +240,18 @@ const Game = {
         
         const relativeY = ((clientY - rect.top) / rect.height) * this.V_HEIGHT;
         
-        if (relativeY < this.V_HEIGHT / 2) {
-            this.changeLane(-1);
+        // Map relativeY to lanes (0, 1, 2)
+        // Thresholds based on average lane centers: 353 and 466
+        let targetLane = 1;
+        if (relativeY < 353) {
+            targetLane = 0;
+        } else if (relativeY < 466) {
+            targetLane = 1;
         } else {
-            this.changeLane(1);
+            targetLane = 2;
         }
+        
+        this.setLane(targetLane);
     },
     
     createSkidParticles() {
