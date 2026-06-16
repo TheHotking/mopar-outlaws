@@ -2,12 +2,80 @@
    MOPAR RETRO CRUISER - LEADERBOARD MODULE
    ========================================================================== */
 
+const DB = {
+    appKey: 'ikcamxt8',
+    key: 'leaderboard',
+    
+    base64UrlEncode(str) {
+        const bytes = new TextEncoder().encode(str);
+        const binString = String.fromCodePoint(...bytes);
+        const base64 = btoa(binString);
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    },
+    
+    base64UrlDecode(base64url) {
+        let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const binString = atob(base64);
+        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
+        return new TextDecoder().decode(bytes);
+    },
+    
+    async getGlobalScores() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+            
+            const response = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${this.appKey}/${this.key}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) return null;
+            const text = await response.text();
+            if (!text || text.includes("null") || text.includes("Error")) return [];
+            
+            const decoded = this.base64UrlDecode(text.trim().replace(/^"|"$/g, ''));
+            return JSON.parse(decoded);
+        } catch (e) {
+            console.error("Error fetching global scores:", e);
+            return null;
+        }
+    },
+    
+    async saveGlobalScores(scores) {
+        try {
+            const json = JSON.stringify(scores);
+            const encoded = this.base64UrlEncode(json);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            
+            const response = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${this.appKey}/${this.key}/${encoded}`, {
+                method: 'POST',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return response.ok;
+        } catch (e) {
+            console.error("Error saving global scores:", e);
+            return false;
+        }
+    }
+};
+
 const Leaderboard = {
     storageKey: 'mopar_outlaws_highscores',
     
-    defaultScores: [],
+    defaultScores: [
+        { name: 'HEMI_DEMON', car: 'Charger Daytona', level: 4, score: 550, isDefault: true },
+        { name: 'CUDACRUISER', car: 'Plymouth Cuda', level: 3, score: 320, isDefault: true },
+        { name: 'ROADRUNNER', car: 'Superbird', level: 2, score: 180, isDefault: true }
+    ],
 
-    init() {
+    async init() {
         // Build listeners
         const viewBtn = document.getElementById('view-leaderboard-btn');
         const closeBtn = document.getElementById('close-leaderboard-btn');
@@ -15,9 +83,16 @@ const Leaderboard = {
         const resetBtn = document.getElementById('reset-scores-btn');
 
         if (viewBtn && modal) {
-            viewBtn.addEventListener('click', () => {
+            viewBtn.addEventListener('click', async () => {
                 this.populateTables();
                 modal.classList.add('active');
+                
+                // Fetch latest global scores when opening
+                const globalScores = await DB.getGlobalScores();
+                if (globalScores && globalScores.length > 0) {
+                    this.setScores(globalScores);
+                    this.populateTables(globalScores);
+                }
             });
         }
 
@@ -25,7 +100,6 @@ const Leaderboard = {
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
             });
-            // Close if clicking overlay
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
@@ -34,10 +108,11 @@ const Leaderboard = {
         }
 
         if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
+            resetBtn.addEventListener('click', async () => {
                 if (confirm('Are you sure you want to reset all high scores?')) {
                     this.clearScores();
                     this.populateTables();
+                    await DB.saveGlobalScores(this.defaultScores);
                 }
             });
         }
@@ -47,8 +122,19 @@ const Leaderboard = {
             this.setScores(this.defaultScores);
         }
 
-        // Render initial UI lists
+        // Render initial UI lists immediately from local storage
         this.populateTables();
+        
+        // Then load global scores in background
+        try {
+            const globalScores = await DB.getGlobalScores();
+            if (globalScores && globalScores.length > 0) {
+                this.setScores(globalScores);
+                this.populateTables(globalScores);
+            }
+        } catch (e) {
+            console.warn("Could not sync global leaderboard on load:", e);
+        }
     },
 
     getScores() {
@@ -67,10 +153,9 @@ const Leaderboard = {
     },
 
     // Save score. If name matches, only update if the new score is higher.
-    submitScore(driverName, carPresetName, level, score) {
+    async submitScore(driverName, carPresetName, level, score) {
         if (score <= 0) return false;
         
-        let scores = this.getScores();
         const cleanedName = driverName.trim().toUpperCase() || 'HEMI_DEMON';
         
         let carName = 'Custom Car';
@@ -90,9 +175,14 @@ const Leaderboard = {
             }
         }
 
-        // Check if driver name already exists
+        // 1. Fetch latest global scores to sync with other players
+        let scores = await DB.getGlobalScores();
+        if (!scores || scores.length === 0) {
+            scores = this.getScores();
+        }
+
+        // Remove default flags for the matched user if they are playing
         const existingIdx = scores.findIndex(s => s.name === cleanedName);
-        
         let newRecord = false;
         
         if (existingIdx !== -1) {
@@ -101,6 +191,7 @@ const Leaderboard = {
                 scores[existingIdx].score = score;
                 scores[existingIdx].level = Math.max(scores[existingIdx].level, level);
                 scores[existingIdx].car = carName;
+                scores[existingIdx].isDefault = false;
                 newRecord = true;
             }
         } else {
@@ -118,10 +209,13 @@ const Leaderboard = {
         // Sort and limit to top 15 records
         scores.sort((a, b) => b.score - a.score);
         scores = scores.slice(0, 15);
-        this.setScores(scores);
         
-        // Refresh UIs
-        this.populateTables();
+        // 2. Save locally and globally
+        this.setScores(scores);
+        await DB.saveGlobalScores(scores);
+        
+        // Refresh UI
+        this.populateTables(scores);
         
         return newRecord;
     },
@@ -131,8 +225,8 @@ const Leaderboard = {
         this.setScores(this.defaultScores);
     },
 
-    populateTables() {
-        const scores = this.getScores();
+    populateTables(scoresArray) {
+        const scores = scoresArray || this.getScores();
         
         // 1. Populate Mini Table (Top 3 on Start Screen)
         const miniList = document.getElementById('mini-leaderboard-list');

@@ -98,23 +98,40 @@ const Game = {
         if (restartBtn) restartBtn.addEventListener('click', () => this.resetGame('playing'));
         if (menuBtn) menuBtn.addEventListener('click', () => this.resetGame('menu'));
         
-        // Touch controls (Slide up/down to steer)
+        // Touch controls (Slide up/down to steer - Window Drag Listener pattern)
         const canvasContainer = document.getElementById('canvas-container');
-        canvasContainer.addEventListener('mousedown', (e) => this.handleTouchInput(e));
-        canvasContainer.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Stop double taps zooming on mobile
+        
+        const handleTouchMove = (e) => {
+            e.preventDefault();
             this.handleTouchInput(e);
+        };
+        const handleTouchEnd = () => {
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+            window.removeEventListener('touchcancel', handleTouchEnd);
+        };
+        
+        canvasContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.handleTouchInput(e);
+            window.addEventListener('touchmove', handleTouchMove, { passive: false });
+            window.addEventListener('touchend', handleTouchEnd, { passive: false });
+            window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
         }, { passive: false });
         
-        canvasContainer.addEventListener('mousemove', (e) => {
-            if (e.buttons === 1) { // Left mouse button held down
-                this.handleTouchInput(e);
-            }
-        });
-        canvasContainer.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Stop page scrolling
+        const handleMouseMove = (e) => {
             this.handleTouchInput(e);
-        }, { passive: false });
+        };
+        const handleMouseUp = () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+        
+        canvasContainer.addEventListener('mousedown', (e) => {
+            this.handleTouchInput(e);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        });
 
         // Virtual mobile arrow buttons
         const mobileUp = document.getElementById('mobile-arrow-up');
@@ -195,6 +212,17 @@ const Game = {
         this.highScore = activeCarHighScore;
         const hudHighScore = document.getElementById('hud-highscore-val');
         if (hudHighScore) hudHighScore.textContent = this.highScore;
+    },
+    
+    addScore(amount) {
+        this.score += amount;
+        document.getElementById('hud-score-val').textContent = this.score;
+        
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            const hudHighScore = document.getElementById('hud-highscore-val');
+            if (hudHighScore) hudHighScore.textContent = this.highScore;
+        }
     },
     
     resizeCanvas() {
@@ -499,7 +527,7 @@ const Game = {
         }
     },
     
-    crash() {
+    async crash() {
         this.state = 'crashed';
         this.crashTime = performance.now();
         this.createCrashParticles();
@@ -511,7 +539,7 @@ const Game = {
         
         const driverName = document.getElementById('hud-driver-name').textContent;
         const carPreset = document.getElementById('car-preset').value;
-        const isRecord = Leaderboard.submitScore(driverName, carPreset, this.level, this.score);
+        const isRecord = await Leaderboard.submitScore(driverName, carPreset, this.level, this.score);
         
         setTimeout(() => {
             document.getElementById('go-score-val').textContent = this.score;
@@ -545,8 +573,7 @@ const Game = {
         
         // Award finish line bonus points!
         const bonus = 200;
-        this.score += bonus;
-        document.getElementById('hud-score-val').textContent = this.score;
+        this.addScore(bonus);
         
         // Trigger screen announcement
         const banner = document.getElementById('level-up-banner');
@@ -739,8 +766,7 @@ const Game = {
                         const firstUnpassed = matchesX.find(o => !o.passed);
                         
                         if (!firstUnpassed) {
-                            this.score += 10;
-                            document.getElementById('hud-score-val').textContent = this.score;
+                            this.addScore(10);
                         }
                     }
                 }
