@@ -389,6 +389,10 @@ const Game = {
         document.getElementById('menu-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
         
+        // Show lane control buttons
+        const lanePanel = document.getElementById('lane-controls-panel');
+        if (lanePanel) lanePanel.classList.add('visible');
+        
         this.playerSpriteCanvas = Pixelator.spriteCanvas;
         this.paintColor = Pixelator.primaryColor;
         
@@ -486,6 +490,10 @@ const Game = {
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('game-over-screen').classList.remove('active');
             document.getElementById('menu-screen').classList.add('active');
+            
+            // Hide lane control buttons when back on menu
+            const lanePanel = document.getElementById('lane-controls-panel');
+            if (lanePanel) lanePanel.classList.remove('visible');
             
             if (this.animationFrameId) {
                 cancelAnimationFrame(this.animationFrameId);

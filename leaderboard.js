@@ -125,7 +125,7 @@ const Leaderboard = {
         // Render initial UI lists immediately from local storage
         this.populateTables();
         
-        // Then load global scores in background
+        // Load global scores immediately on page load
         try {
             const globalScores = await DB.getGlobalScores();
             if (globalScores && globalScores.length > 0) {
@@ -135,6 +135,17 @@ const Leaderboard = {
         } catch (e) {
             console.warn("Could not sync global leaderboard on load:", e);
         }
+        
+        // Auto-refresh global leaderboard every 30 seconds
+        setInterval(async () => {
+            try {
+                const globalScores = await DB.getGlobalScores();
+                if (globalScores && globalScores.length > 0) {
+                    this.setScores(globalScores);
+                    this.populateTables(globalScores);
+                }
+            } catch (e) { /* silent fail on auto-refresh */ }
+        }, 30000);
     },
 
     getScores() {

@@ -1545,30 +1545,23 @@ select:focus {
                     <span class="level-up-text">LEVEL UP!</span>
                     <span id="level-up-subtitle" class="level-up-subtitle">SPEED INCREASING...</span>
                 </div>
+            </div>
 
-                <!-- Tap Instruction (Mobile Only) -->
-                <div id="tap-instruction" class="tap-hint">
-                    <div class="tap-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
-                    </div>
-                    <p>TAP ARROWS TO STEER<br>(OR USE ARROW KEYS)</p>
-                </div>
-
-                <!-- Lane Control Buttons (Left side: Top / Middle / Bottom) -->
-                <div class="lane-controls-panel">
-                    <button id="lane-btn-top" class="lane-btn" aria-label="Top Lane">
-                        <!-- Up arrow -->
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-                    </button>
-                    <button id="lane-btn-mid" class="lane-btn lane-btn-mid" aria-label="Middle Lane">
-                        <!-- Left arrow = return to middle -->
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                    </button>
-                    <button id="lane-btn-bot" class="lane-btn" aria-label="Bottom Lane">
-                        <!-- Down arrow -->
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </button>
-                </div>
+            <!-- Lane Control Buttons - Direct child of game-screen, always on top -->
+            <div class="lane-controls-panel" id="lane-controls-panel">
+                <button id="lane-btn-top" class="lane-btn" aria-label="Top Lane">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                    <span class="lane-btn-label">TOP</span>
+                </button>
+                <button id="lane-btn-mid" class="lane-btn lane-btn-mid" aria-label="Middle Lane">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    <span class="lane-btn-label">MID</span>
+                </button>
+                <button id="lane-btn-bot" class="lane-btn" aria-label="Bottom Lane">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    <span class="lane-btn-label">BOT</span>
+                </button>
+            </div>
             </div>
         </section>
 
