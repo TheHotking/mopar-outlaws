@@ -68,6 +68,8 @@ const Leaderboard = {
 
     // Save score. If name matches, only update if the new score is higher.
     submitScore(driverName, carPresetName, level, score) {
+        if (score <= 0) return false;
+        
         let scores = this.getScores();
         const cleanedName = driverName.trim().toUpperCase() || 'HEMI_DEMON';
         

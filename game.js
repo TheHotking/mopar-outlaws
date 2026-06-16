@@ -371,6 +371,8 @@ const Game = {
     },
     
     resetGame(targetState) {
+        const isRestartAfterCrash = (this.state === 'crashed');
+
         // If starting, transition to countdown first
         if (targetState === 'playing') {
             this.state = 'countdown';
@@ -379,12 +381,17 @@ const Game = {
             this.state = targetState;
         }
         
+        if (isRestartAfterCrash) {
+            this.score = 0;
+            this.level = 1;
+        } else {
+            this.score = targetState === 'menu' ? 0 : this.score;
+            this.level = targetState === 'menu' ? 1 : this.level;
+        }
+        
         // Progressive scaling variables based on level
         this.gameSpeed = 4.5 + (this.level - 1) * 0.9; 
         this.obstacleSpawnInterval = Math.max(1400 - (this.level * 80), 900);
-        
-        this.score = targetState === 'menu' ? 0 : this.score;
-        this.level = targetState === 'menu' ? 1 : this.level;
         this.roundTime = 0;
         this.finishLineSpawned = false;
         this.victoryTimer = 0;
