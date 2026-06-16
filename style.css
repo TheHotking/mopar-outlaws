@@ -596,6 +596,7 @@ select:focus {
     height: 100%;
     flex: 1;
     background: #000;
+    touch-action: none;
 }
 
 #game-canvas {
@@ -603,6 +604,7 @@ select:focus {
     width: 100%;
     height: 100%;
     background-color: #1a0f30;
+    touch-action: none;
 }
 
 /* In-game overlay banners */
@@ -1356,5 +1358,48 @@ select:focus {
     z-index: 10;
     pointer-events: none;
 }
+
+/* Mobile Virtual Arrow Controls */
+.mobile-arrows-container {
+    position: absolute;
+    bottom: 25px;
+    right: 25px;
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 100;
+}
+
+.mobile-arrow-btn {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: rgba(30, 41, 59, 0.65);
+    border: 2.5px solid rgba(255, 87, 34, 0.6);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    transition: background 0.1s, transform 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.mobile-arrow-btn:active {
+    background: rgba(255, 87, 34, 0.85);
+    transform: scale(0.92);
+}
+
+@media (max-width: 768px) {
+    .mobile-arrows-container {
+        display: flex;
+    }
+}
+
 
 

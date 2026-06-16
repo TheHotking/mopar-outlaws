@@ -115,6 +115,30 @@ const Game = {
             e.preventDefault(); // Stop page scrolling
             this.handleTouchInput(e);
         }, { passive: false });
+
+        // Virtual mobile arrow buttons
+        const mobileUp = document.getElementById('mobile-arrow-up');
+        const mobileDown = document.getElementById('mobile-arrow-down');
+        
+        if (mobileUp) {
+            const triggerUp = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeLane(-1);
+            };
+            mobileUp.addEventListener('touchstart', triggerUp, { passive: false });
+            mobileUp.addEventListener('mousedown', triggerUp);
+        }
+        
+        if (mobileDown) {
+            const triggerDown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeLane(1);
+            };
+            mobileDown.addEventListener('touchstart', triggerDown, { passive: false });
+            mobileDown.addEventListener('mousedown', triggerDown);
+        }
         
         // Keyboard controls (Up/Down arrows, Spacebar)
         window.addEventListener('keydown', (e) => {
@@ -234,6 +258,8 @@ const Game = {
         
         if (e.touches && e.touches.length > 0) {
             clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clientY = e.changedTouches[0].clientY;
         } else {
             clientY = e.clientY;
         }
