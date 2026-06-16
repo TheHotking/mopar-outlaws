@@ -98,63 +98,40 @@ const Game = {
         if (restartBtn) restartBtn.addEventListener('click', () => this.resetGame('playing'));
         if (menuBtn) menuBtn.addEventListener('click', () => this.resetGame('menu'));
         
-        // Touch controls (Slide up/down to steer - Window Drag Listener pattern)
+        // Canvas touch/click — detect lane button zones (left strip of screen)
         const canvasContainer = document.getElementById('canvas-container');
-        
-        const handleTouchMove = (e) => {
-            e.preventDefault();
-            this.handleTouchInput(e);
+        const getLaneTapFromEvent = (e) => {
+            const touch = e.touches ? e.touches[0] : e;
+            if (!touch) return null;
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.V_WIDTH / rect.width;
+            const scaleY = this.V_HEIGHT / rect.height;
+            const vx = (touch.clientX - rect.left) * scaleX;
+            const vy = (touch.clientY - rect.top) * scaleY;
+            if (vx > 80) return null; // not in button zone
+            if (vy < this.V_HEIGHT / 3) return 0;
+            if (vy < (this.V_HEIGHT * 2) / 3) return 1;
+            return 2;
         };
-        const handleTouchEnd = () => {
-            window.removeEventListener('touchmove', handleTouchMove);
-            window.removeEventListener('touchend', handleTouchEnd);
-            window.removeEventListener('touchcancel', handleTouchEnd);
-        };
-        
+
         canvasContainer.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            if (this.state === 'playing') {
+                const lane = getLaneTapFromEvent(e);
+                if (lane !== null) { this.setLane(lane); return; }
+            }
             this.handleTouchInput(e);
-            window.addEventListener('touchmove', handleTouchMove, { passive: false });
-            window.addEventListener('touchend', handleTouchEnd, { passive: false });
-            window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
         }, { passive: false });
-        
-        const handleMouseMove = (e) => {
-            this.handleTouchInput(e);
-        };
-        const handleMouseUp = () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-        
+
         canvasContainer.addEventListener('mousedown', (e) => {
+            if (this.state === 'playing') {
+                const lane = getLaneTapFromEvent(e);
+                if (lane !== null) { this.setLane(lane); return; }
+            }
             this.handleTouchInput(e);
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
         });
 
-        // Lane control buttons (Left panel: Top / Middle / Bottom)
-        const laneBtnTop = document.getElementById('lane-btn-top');
-        const laneBtnMid = document.getElementById('lane-btn-mid');
-        const laneBtnBot = document.getElementById('lane-btn-bot');
-        
-        const makeLaneHandler = (btn, laneIndex) => {
-            if (!btn) return;
-            const handler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.setLane(laneIndex);
-                btn.classList.add('pressed');
-                setTimeout(() => btn.classList.remove('pressed'), 150);
-            };
-            btn.addEventListener('touchstart', handler, { passive: false });
-            btn.addEventListener('mousedown', handler);
-        };
-        
-        makeLaneHandler(laneBtnTop, 0);
-        makeLaneHandler(laneBtnMid, 1);
-        makeLaneHandler(laneBtnBot, 2);
-        
+
         // Keyboard controls (Up/Down arrows, Spacebar)
         window.addEventListener('keydown', (e) => {
             if (this.state === 'playing') {
@@ -389,10 +366,6 @@ const Game = {
         document.getElementById('menu-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
         
-        // Show lane control buttons
-        const lanePanel = document.getElementById('lane-controls-panel');
-        if (lanePanel) lanePanel.classList.add('visible');
-        
         this.playerSpriteCanvas = Pixelator.spriteCanvas;
         this.paintColor = Pixelator.primaryColor;
         
@@ -490,10 +463,6 @@ const Game = {
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('game-over-screen').classList.remove('active');
             document.getElementById('menu-screen').classList.add('active');
-            
-            // Hide lane control buttons when back on menu
-            const lanePanel = document.getElementById('lane-controls-panel');
-            if (lanePanel) lanePanel.classList.remove('visible');
             
             if (this.animationFrameId) {
                 cancelAnimationFrame(this.animationFrameId);
@@ -848,12 +817,91 @@ const Game = {
         
         // 5. Draw Player Car
         this.drawPlayer();
-        
         // 6. Draw Countdown overlay text
         if (this.state === 'countdown') {
             this.drawCountdownOverlay();
         }
+        
+        // 7. Draw lane control buttons on top of everything (always visible)
+        if (this.state === 'playing' || this.state === 'countdown') {
+            this.drawLaneButtons();
+        }
     },
+
+    drawLaneButtons() {
+        const ctx = this.ctx;
+        const W = this.V_WIDTH;
+        const H = this.V_HEIGHT;
+        const btnW = 68;
+        const third = H / 3;
+
+        const buttons = [
+            { y: 0,         h: third,  lane: 0, arrow: 'UP',  color: '#ff5722', glow: 'rgba(255,87,34,0.6)' },
+            { y: third,     h: third,  lane: 1, arrow: 'MID', color: '#39ff14', glow: 'rgba(57,255,20,0.6)'  },
+            { y: third * 2, h: third,  lane: 2, arrow: 'DN',  color: '#ff5722', glow: 'rgba(255,87,34,0.6)' },
+        ];
+
+        buttons.forEach(btn => {
+            const isActive = this.player.currentLane === btn.lane;
+            const bx = 5;
+            const by = btn.y + 10;
+            const bw = btnW - 10;
+            const bh = btn.h - 20;
+            const cx = bx + bw / 2;
+            const cy = by + bh / 2;
+
+            // Button background
+            ctx.save();
+            ctx.globalAlpha = isActive ? 0.72 : 0.52;
+            const grad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+            grad.addColorStop(0, btn.lane === 1 ? 'rgba(20,60,20,0.9)' : 'rgba(40,15,10,0.9)');
+            grad.addColorStop(1, btn.lane === 1 ? 'rgba(10,30,10,0.6)' : 'rgba(20,8,5,0.6)');
+            ctx.fillStyle = grad;
+            ctx.strokeStyle = isActive ? btn.color : (btn.lane === 1 ? 'rgba(57,255,20,0.7)' : 'rgba(255,87,34,0.7)');
+            ctx.lineWidth = isActive ? 2.5 : 1.5;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(bx, by, bw, bh, 10);
+            } else {
+                ctx.rect(bx, by, bw, bh);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Glow on active
+            if (isActive) {
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                ctx.shadowColor = btn.color;
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = btn.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 10);
+                else ctx.rect(bx, by, bw, bh);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Arrow icon
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = isActive ? btn.color : '#ffffff';
+            ctx.font = `bold ${Math.round(bh * 0.32)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const arrowChar = btn.lane === 0 ? '▲' : btn.lane === 2 ? '▼' : '◀';
+            ctx.fillText(arrowChar, cx, cy - bh * 0.12);
+
+            // Label
+            ctx.font = `bold ${Math.round(bh * 0.18)}px Arial`;
+            ctx.fillStyle = isActive ? btn.color : 'rgba(220,200,180,0.9)';
+            ctx.fillText(btn.arrow, cx, cy + bh * 0.28);
+            ctx.restore();
+        });
+    },
+
     
     drawParallaxBackground() {
         // Sky Layer (Synthwave Purple Grid Sky)
