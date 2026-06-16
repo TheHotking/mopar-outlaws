@@ -157,6 +157,28 @@ const Game = {
             mobileDown.addEventListener('mousedown', triggerDown);
         }
         
+        // Setup Control Mode Toggle
+        const btnArrows = document.getElementById('control-btn-arrows');
+        const btnSlide = document.getElementById('control-btn-slide');
+        
+        window.controlMode = localStorage.getItem('mopar_outlaws_control_mode') || 'arrows';
+        this.updateControlModeUI();
+        
+        if (btnArrows) {
+            btnArrows.addEventListener('click', () => {
+                window.controlMode = 'arrows';
+                localStorage.setItem('mopar_outlaws_control_mode', 'arrows');
+                this.updateControlModeUI();
+            });
+        }
+        if (btnSlide) {
+            btnSlide.addEventListener('click', () => {
+                window.controlMode = 'slide';
+                localStorage.setItem('mopar_outlaws_control_mode', 'slide');
+                this.updateControlModeUI();
+            });
+        }
+        
         // Keyboard controls (Up/Down arrows, Spacebar)
         window.addEventListener('keydown', (e) => {
             if (this.state === 'playing') {
@@ -212,6 +234,31 @@ const Game = {
         this.highScore = activeCarHighScore;
         const hudHighScore = document.getElementById('hud-highscore-val');
         if (hudHighScore) hudHighScore.textContent = this.highScore;
+    },
+    
+    updateControlModeUI() {
+        const btnArrows = document.getElementById('control-btn-arrows');
+        const btnSlide = document.getElementById('control-btn-slide');
+        const mobileArrows = document.querySelector('.mobile-arrows-container');
+        const instructionText = document.querySelector('#tap-instruction p');
+        
+        if (window.controlMode === 'slide') {
+            if (btnArrows) btnArrows.classList.remove('active');
+            if (btnSlide) btnSlide.classList.add('active');
+            if (mobileArrows) mobileArrows.style.display = 'none';
+            if (instructionText) {
+                instructionText.innerHTML = 'SLIDE FINGER UP/DOWN TO STEER<br>(OR USE ARROWS / SPACEBAR)';
+            }
+        } else {
+            if (btnArrows) btnArrows.classList.add('active');
+            if (btnSlide) btnSlide.classList.remove('active');
+            if (mobileArrows) {
+                mobileArrows.style.setProperty('display', '', '');
+            }
+            if (instructionText) {
+                instructionText.innerHTML = 'TAP ON-SCREEN ARROWS TO STEER<br>(OR USE ARROWS / SPACEBAR)';
+            }
+        }
     },
     
     addScore(amount) {
@@ -280,6 +327,8 @@ const Game = {
             }
             return;
         }
+        
+        if (window.controlMode !== 'slide') return;
         
         const rect = this.canvas.getBoundingClientRect();
         let clientY;
@@ -496,6 +545,8 @@ const Game = {
         document.getElementById('hud-score-val').textContent = this.score;
         document.getElementById('hud-level-val').textContent = this.level;
         document.getElementById('hud-speed-val').textContent = `${Math.round(60 + this.gameSpeed * 10)} MPH`;
+        
+        this.updateControlModeUI();
         
         // Reset Progress Bar
         const progFill = document.getElementById('race-progress-fill');
