@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Mopar Outlaws - Outrun the police, dodge highway roadblocks, and escape in your customized muscle car.">
+    <title>Mopar Outlaws</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Background Ambient Video/Gradients -->
+        <div class="ambient-glow"></div>
+
+        <!-- 0. INTRO SPLASH SCREEN -->
+        <section id="intro-screen" class="screen active">
+            <div class="intro-content">
+                <div class="police-ambient-flasher"></div>
+                <h1 class="intro-logo">
+                    <span class="logo-top">MOPAR</span>
+                    <span class="logo-bottom">OUTLAWS</span>
+                </h1>
+                <p class="intro-tagline">OUTRUN THE LAW</p>
+                <div class="retro-scanlines"></div>
+            </div>
+        </section>
+
+        <!-- 1. START SCREEN / MAIN MENU -->
+        <section id="menu-screen" class="screen">
+            <header>
+                <h1 class="game-title">
+                    <span class="title-top">MOPAR</span>
+                    <span class="title-bottom">OUTLAWS</span>
+                </h1>
+                <p class="subtitle">Outrun the law & dodge the roadblocks</p>
+            </header>
+
+            <main class="menu-content">
+                <!-- Character & Car Customizer Box -->
+                <div class="customizer-box glass-panel">
+                    <h2>CUSTOMIZE YOUR RIDE</h2>
+                    
+                    <div class="customizer-layout">
+                        <!-- Left Side: Sprite Generator Preview -->
+                        <div class="sprite-preview-container">
+                            <div class="canvas-preview-wrapper">
+                                <canvas id="sprite-preview-canvas" width="64" height="32"></canvas>
+                                <div class="pixel-grid-overlay"></div>
+                            </div>
+                            <span class="preview-label">8-BIT SPRITE PREVIEW</span>
+                        </div>
+
+                        <!-- Right Side: Customization Controls -->
+                        <div class="customizer-controls">
+                            <div class="form-group">
+                                <label for="driver-name">Driver Name</label>
+                                <input type="text" id="driver-name" maxlength="15" placeholder="HEMI_DEMON" value="HEMI_DEMON">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Your Mopar Car Photo</label>
+                                <label for="photo-upload" class="file-upload-btn btn-secondary" id="upload-photo-btn-label">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    Upload Car Image
+                                </label>
+                                <input type="file" id="photo-upload" accept="image/*" style="display: none;">
+                                <p class="help-text">JPG/PNG of your car (side view works best)</p>
+                            </div>
+
+                            <div class="form-group row">
+                                <div class="slider-control">
+                                    <label for="pixel-size">Pixel Detail</label>
+                                    <select id="pixel-size">
+                                        <option value="32">Retro Classic (32x16)</option>
+                                        <option value="64" selected>Detailed Arcade (64x32)</option>
+                                        <option value="96">High-Def 16-Bit (96x48)</option>
+                                        <option value="128">Hi-Res Cartoon (128x64)</option>
+                                        <option value="256">Toy Car Style (256x128)</option>
+                                        <option value="512">Smooth Cutout (512x256)</option>
+                                    </select>
+                                </div>
+                                <select id="car-preset" style="display: none;">
+                                    <option value="custom" selected>Custom Uploaded Car</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="control-mode">Mobile Controls</label>
+                                <select id="control-mode">
+                                    <option value="tapping" selected>Tapping (Lane Buttons)</option>
+                                    <option value="sliding">Sliding (Swipe / Drag)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="flip-car" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="flip-car" checked style="width: 16px; height: 16px; accent-color: var(--accent-orange); cursor: pointer;">
+                                    Face Forward (Drive Right)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Outlaw Garage Panel -->
+                <div class="garage-panel glass-panel">
+                    <h3>OUTLAW GARAGE</h3>
+                    <div id="car-gallery-grid" class="gallery-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Game Modes / Levels & Action -->
+                <div class="action-box">
+                    <button id="start-btn" class="btn-primary pulse">
+                        START ESCAPE
+                        <span class="btn-subtext">Outrun the Police & Dodge roadblocks</span>
+                    </button>
+                </div>
+                
+                <!-- Quick Leaderboard Summary -->
+                <div class="mini-leaderboard-box glass-panel">
+                    <div class="panel-header">
+                        <h3>CLUB LEADERBOARD</h3>
+                        <button id="view-leaderboard-btn" class="text-link">View Full</button>
+                    </div>
+                    <ul id="mini-leaderboard-list" class="leaderboard-table-mini">
+                        <!-- Populated by JS -->
+                    </ul>
+                </div>
+            </main>
+
+            <footer>
+                <p>&copy; 2026 Mopar Car Club. Drive Safely & Play Hard.</p>
+            </footer>
+        </section>
+
+        <!-- 2. GAMEPLAY SCREEN -->
+        <section id="game-screen" class="screen">
+            <!-- Game HUD Overlay -->
+            <div id="game-hud">
+                <div class="hud-left">
+                    <div class="hud-item driver-badge">
+                        <span class="hud-label">DRIVER</span>
+                        <span id="hud-driver-name" class="hud-val">HEMI_DEMON</span>
+                    </div>
+                    <div class="hud-item level-badge">
+                        <span class="hud-label">LEVEL</span>
+                        <span id="hud-level-val" class="hud-val-highlight">1</span>
+                    </div>
+                </div>
+
+                <div class="hud-center">
+                    <div id="hud-score-container">
+                        <span id="hud-score-val">0</span>
+                        <span class="score-label">POINTS</span>
+                    </div>
+                    <!-- Race progress tracker bar -->
+                    <div id="race-progress-container">
+                        <span class="progress-lbl start-lbl">START</span>
+                        <div class="progress-track">
+                            <div id="race-progress-fill"></div>
+                            <span id="race-progress-marker">🚗</span>
+                        </div>
+                        <span class="progress-lbl finish-lbl">FINISH</span>
+                    </div>
+                </div>
+
+                <div class="hud-right">
+                    <div class="hud-item highscore-badge">
+                        <span class="hud-label">HI-SCORE</span>
+                        <span id="hud-highscore-val" class="hud-val">0</span>
+                    </div>
+                    <div class="hud-item speedometer-badge">
+                        <span class="hud-label">SPEED</span>
+                        <span id="hud-speed-val" class="hud-val">60 MPH</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div id="canvas-container">
+                <canvas id="game-canvas"></canvas>
+                
+                <!-- Level Up Banner (Overlayed on Canvas) -->
+                <div id="level-up-banner" class="hud-overlay-banner">
+                    <span class="level-up-text">LEVEL UP!</span>
+                    <span id="level-up-subtitle" class="level-up-subtitle">SPEED INCREASING...</span>
+                </div>
+            </div>
+
+            <!-- Lane buttons are drawn directly on the game canvas -->
+            </div>
+        </section>
+
+        <!-- 3. GAME OVER SCREEN -->
+        <section id="game-over-screen" class="screen">
+            <div class="game-over-box glass-panel modal-panel">
+                <h1 class="crash-title">BUSTED!</h1>
+                <p class="crash-cause" id="crash-cause-text">You got pulled over by the highway patrol!</p>
+                
+                <div class="score-summary-grid">
+                    <div class="score-card">
+                        <span class="card-label">FINAL SCORE</span>
+                        <span class="card-val" id="go-score-val">0</span>
+                    </div>
+                    <div class="score-card">
+                        <span class="card-label">MAX LEVEL</span>
+                        <span class="card-val-highlight" id="go-level-val">1</span>
+                    </div>
+                </div>
+
+                <!-- New High Score Banner -->
+                <div id="new-record-badge" class="new-record-badge hidden">
+                    🔥 NEW CLUB RECORD! 🔥
+                </div>
+
+                <div class="game-over-actions">
+                    <button id="restart-btn" class="btn-primary pulse">
+                        DRIVE AGAIN
+                    </button>
+                    <button id="menu-btn" class="btn-secondary">
+                        MAIN MENU
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. LEADERBOARD DIALOG (FULL SCREEN MODAL) -->
+        <div id="leaderboard-modal" class="modal-overlay">
+            <div class="leaderboard-box glass-panel modal-panel">
+                <div class="modal-header">
+                    <div class="mopar-logo-badge">GLOBAL STANDINGS</div>
+                    <h2>MOPAR LEADERBOARD</h2>
+                    <button id="close-leaderboard-btn" class="close-btn">&times;</button>
+                </div>
+
+                <div class="modal-content">
+                    <div class="table-responsive">
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Driver</th>
+                                    <th>Car Build</th>
+                                    <th>Level</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-rows">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="reset-scores-btn" class="btn-danger-text">Reset Local Scores</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="audio.js"></script>
+    <script src="pixelator.js"></script>
+    <script src="leaderboard.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
+

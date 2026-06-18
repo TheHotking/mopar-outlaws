@@ -59,6 +59,9 @@ html, body {
     font-family: 'Outfit', sans-serif;
     color: var(--text-light);
     line-height: 1.5;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    touch-action: none;
 }
 
 /* App structure */
@@ -608,6 +611,7 @@ select:focus {
     height: 100%;
     flex: 1;
     background: #000;
+    touch-action: none;
 }
 
 #game-canvas {
@@ -615,6 +619,7 @@ select:focus {
     width: 100%;
     height: 100%;
     background-color: #1a0f30;
+    touch-action: none;
 }
 
 /* In-game overlay banners */
@@ -1369,6 +1374,78 @@ select:focus {
     pointer-events: none;
 }
 
+/* Lane Control Buttons Panel - Overlays the game screen on the left side */
+.lane-controls-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 72px;
+    display: none; /* Hidden by default, shown during gameplay */
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 200;
+    pointer-events: auto;
+    padding: 80px 6px 20px 6px; /* top padding avoids HUD */
+    background: linear-gradient(to right, rgba(7, 5, 15, 0.82) 0%, rgba(7, 5, 15, 0.0) 100%);
+}
+
+.lane-controls-panel.visible {
+    display: flex;
+}
+
+.lane-btn {
+    width: 58px;
+    height: 68px;
+    border-radius: 14px;
+    background: rgba(20, 14, 38, 0.88);
+    border: 2px solid rgba(255, 87, 34, 0.85);
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 87, 34, 0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: background 0.1s, transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    flex-shrink: 0;
+}
+
+.lane-btn-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: rgba(255, 200, 150, 0.95);
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
+.lane-btn-mid {
+    border-color: rgba(57, 255, 20, 0.85);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 0 10px rgba(57, 255, 20, 0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.lane-btn-mid .lane-btn-label {
+    color: rgba(150, 255, 120, 0.95);
+}
+
+.lane-btn:active,
+.lane-btn.pressed {
+    background: rgba(255, 87, 34, 0.85);
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 87, 34, 0.7);
+}
+
+.lane-btn-mid:active,
+.lane-btn-mid.pressed {
+    background: rgba(57, 255, 20, 0.7);
+    border-color: rgba(57, 255, 20, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 20px rgba(57, 255, 20, 0.7);
+}
 
 
 </style>
@@ -1451,6 +1528,14 @@ select:focus {
                             </div>
 
                             <div class="form-group">
+                                <label for="control-mode">Mobile Controls</label>
+                                <select id="control-mode">
+                                    <option value="tapping" selected>Tapping (Lane Buttons)</option>
+                                    <option value="sliding">Sliding (Swipe / Drag)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="flip-car" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
                                     <input type="checkbox" id="flip-car" checked style="width: 16px; height: 16px; accent-color: var(--accent-orange); cursor: pointer;">
                                     Face Forward (Drive Right)
@@ -1518,7 +1603,7 @@ select:focus {
                         <span class="progress-lbl start-lbl">START</span>
                         <div class="progress-track">
                             <div id="race-progress-fill"></div>
-                            <span id="race-progress-marker">ðŸš—</span>
+                            <span id="race-progress-marker">🚗</span>
                         </div>
                         <span class="progress-lbl finish-lbl">FINISH</span>
                     </div>
@@ -1570,7 +1655,7 @@ select:focus {
 
                 <!-- New High Score Banner -->
                 <div id="new-record-badge" class="new-record-badge hidden">
-                    ðŸ”¥ NEW CLUB RECORD! ðŸ”¥
+                    🔥 NEW CLUB RECORD! 🔥
                 </div>
 
                 <div class="game-over-actions">
@@ -1619,7 +1704,6 @@ select:focus {
         </div>
     </div>
 
-    <!-- Game Scripts -->
     <script>
 /* ==========================================================================
    MOPAR OUTLAWS - WEB AUDIO RETRO SYNTHESIZER
@@ -2281,7 +2365,7 @@ const Pixelator = {
         
         const label = document.getElementById('upload-photo-btn-label');
         if (label) {
-            label.innerHTML = `âœ“ Uploaded: ${file.name.substring(0, 12)}...`;
+            label.innerHTML = `✓ Uploaded: ${file.name.substring(0, 12)}...`;
         }
 
         // Dynamically select custom preset
@@ -3314,12 +3398,80 @@ window.addEventListener('DOMContentLoaded', () => {
    MOPAR RETRO CRUISER - LEADERBOARD MODULE
    ========================================================================== */
 
+const DB = {
+    appKey: 'ikcamxt8',
+    key: 'leaderboard',
+    
+    base64UrlEncode(str) {
+        const bytes = new TextEncoder().encode(str);
+        const binString = String.fromCodePoint(...bytes);
+        const base64 = btoa(binString);
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    },
+    
+    base64UrlDecode(base64url) {
+        let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const binString = atob(base64);
+        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0));
+        return new TextDecoder().decode(bytes);
+    },
+    
+    async getGlobalScores() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+            
+            const response = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${this.appKey}/${this.key}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) return null;
+            const text = await response.text();
+            if (!text || text.includes("null") || text.includes("Error")) return [];
+            
+            const decoded = this.base64UrlDecode(text.trim().replace(/^"|"$/g, ''));
+            return JSON.parse(decoded);
+        } catch (e) {
+            console.error("Error fetching global scores:", e);
+            return null;
+        }
+    },
+    
+    async saveGlobalScores(scores) {
+        try {
+            const json = JSON.stringify(scores);
+            const encoded = this.base64UrlEncode(json);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            
+            const response = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${this.appKey}/${this.key}/${encoded}`, {
+                method: 'POST',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return response.ok;
+        } catch (e) {
+            console.error("Error saving global scores:", e);
+            return false;
+        }
+    }
+};
+
 const Leaderboard = {
     storageKey: 'mopar_outlaws_highscores',
     
-    defaultScores: [],
+    defaultScores: [
+        { name: 'HEMI_DEMON', car: 'Charger Daytona', level: 4, score: 550, isDefault: true },
+        { name: 'CUDACRUISER', car: 'Plymouth Cuda', level: 3, score: 320, isDefault: true },
+        { name: 'ROADRUNNER', car: 'Superbird', level: 2, score: 180, isDefault: true }
+    ],
 
-    init() {
+    async init() {
         // Build listeners
         const viewBtn = document.getElementById('view-leaderboard-btn');
         const closeBtn = document.getElementById('close-leaderboard-btn');
@@ -3327,9 +3479,16 @@ const Leaderboard = {
         const resetBtn = document.getElementById('reset-scores-btn');
 
         if (viewBtn && modal) {
-            viewBtn.addEventListener('click', () => {
+            viewBtn.addEventListener('click', async () => {
                 this.populateTables();
                 modal.classList.add('active');
+                
+                // Fetch latest global scores when opening
+                const globalScores = await DB.getGlobalScores();
+                if (globalScores && globalScores.length > 0) {
+                    this.setScores(globalScores);
+                    this.populateTables(globalScores);
+                }
             });
         }
 
@@ -3337,7 +3496,6 @@ const Leaderboard = {
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
             });
-            // Close if clicking overlay
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
@@ -3346,10 +3504,11 @@ const Leaderboard = {
         }
 
         if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
+            resetBtn.addEventListener('click', async () => {
                 if (confirm('Are you sure you want to reset all high scores?')) {
                     this.clearScores();
                     this.populateTables();
+                    await DB.saveGlobalScores(this.defaultScores);
                 }
             });
         }
@@ -3359,8 +3518,30 @@ const Leaderboard = {
             this.setScores(this.defaultScores);
         }
 
-        // Render initial UI lists
+        // Render initial UI lists immediately from local storage
         this.populateTables();
+        
+        // Load global scores immediately on page load
+        try {
+            const globalScores = await DB.getGlobalScores();
+            if (globalScores && globalScores.length > 0) {
+                this.setScores(globalScores);
+                this.populateTables(globalScores);
+            }
+        } catch (e) {
+            console.warn("Could not sync global leaderboard on load:", e);
+        }
+        
+        // Auto-refresh global leaderboard every 30 seconds
+        setInterval(async () => {
+            try {
+                const globalScores = await DB.getGlobalScores();
+                if (globalScores && globalScores.length > 0) {
+                    this.setScores(globalScores);
+                    this.populateTables(globalScores);
+                }
+            } catch (e) { /* silent fail on auto-refresh */ }
+        }, 30000);
     },
 
     getScores() {
@@ -3379,8 +3560,9 @@ const Leaderboard = {
     },
 
     // Save score. If name matches, only update if the new score is higher.
-    submitScore(driverName, carPresetName, level, score) {
-        let scores = this.getScores();
+    async submitScore(driverName, carPresetName, level, score) {
+        if (score <= 0) return false;
+        
         const cleanedName = driverName.trim().toUpperCase() || 'HEMI_DEMON';
         
         let carName = 'Custom Car';
@@ -3400,9 +3582,14 @@ const Leaderboard = {
             }
         }
 
-        // Check if driver name already exists
+        // 1. Fetch latest global scores to sync with other players
+        let scores = await DB.getGlobalScores();
+        if (!scores || scores.length === 0) {
+            scores = this.getScores();
+        }
+
+        // Remove default flags for the matched user if they are playing
         const existingIdx = scores.findIndex(s => s.name === cleanedName);
-        
         let newRecord = false;
         
         if (existingIdx !== -1) {
@@ -3411,6 +3598,7 @@ const Leaderboard = {
                 scores[existingIdx].score = score;
                 scores[existingIdx].level = Math.max(scores[existingIdx].level, level);
                 scores[existingIdx].car = carName;
+                scores[existingIdx].isDefault = false;
                 newRecord = true;
             }
         } else {
@@ -3428,10 +3616,13 @@ const Leaderboard = {
         // Sort and limit to top 15 records
         scores.sort((a, b) => b.score - a.score);
         scores = scores.slice(0, 15);
-        this.setScores(scores);
         
-        // Refresh UIs
-        this.populateTables();
+        // 2. Save locally and globally
+        this.setScores(scores);
+        await DB.saveGlobalScores(scores);
+        
+        // Refresh UI
+        this.populateTables(scores);
         
         return newRecord;
     },
@@ -3441,8 +3632,8 @@ const Leaderboard = {
         this.setScores(this.defaultScores);
     },
 
-    populateTables() {
-        const scores = this.getScores();
+    populateTables(scoresArray) {
+        const scores = scoresArray || this.getScores();
         
         // 1. Populate Mini Table (Top 3 on Start Screen)
         const miniList = document.getElementById('mini-leaderboard-list');
@@ -3597,6 +3788,12 @@ const Game = {
     // Colors / Sprite references from Pixelator
     playerSpriteCanvas: null,
     paintColor: '#7b1fa2',
+
+    // Mobile controls setup
+    controlMode: 'tapping', // 'tapping' or 'sliding'
+    touchStartY: 0,
+    touchStartX: 0,
+    isDragging: false,
     
     init() {
         this.canvas = document.getElementById('game-canvas');
@@ -3617,14 +3814,124 @@ const Game = {
         if (restartBtn) restartBtn.addEventListener('click', () => this.resetGame('playing'));
         if (menuBtn) menuBtn.addEventListener('click', () => this.resetGame('menu'));
         
-        // Touch controls split screen (Top half = Move Up, Bottom half = Move Down)
+        // Control Mode Selector
+        const controlModeSelect = document.getElementById('control-mode');
+        if (controlModeSelect) {
+            this.controlMode = localStorage.getItem('mopar_outlaws_control_mode') || 'tapping';
+            controlModeSelect.value = this.controlMode;
+            controlModeSelect.addEventListener('change', (e) => {
+                this.controlMode = e.target.value;
+                localStorage.setItem('mopar_outlaws_control_mode', this.controlMode);
+            });
+        }
+
+        // Canvas touch/click and swipe controls
         const canvasContainer = document.getElementById('canvas-container');
-        canvasContainer.addEventListener('mousedown', (e) => this.handleTouchInput(e));
-        canvasContainer.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Stop double taps zooming on mobile
-            this.handleTouchInput(e);
-        }, { passive: false });
-        
+        if (canvasContainer) {
+            const getLaneTapFromEvent = (e) => {
+                const touch = e.touches ? e.touches[0] : e;
+                if (!touch) return null;
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.V_WIDTH / rect.width;
+                const scaleY = this.V_HEIGHT / rect.height;
+                const vx = (touch.clientX - rect.left) * scaleX;
+                const vy = (touch.clientY - rect.top) * scaleY;
+                if (vx > 80) return null; // not in button zone
+                if (vy < this.V_HEIGHT / 3) return 0;
+                if (vy < (this.V_HEIGHT * 2) / 3) return 1;
+                return 2;
+            };
+
+            const handleStart = (clientX, clientY) => {
+                this.touchStartY = clientY;
+                this.touchStartX = clientX;
+                this.isDragging = true;
+            };
+
+            const handleMove = (clientX, clientY) => {
+                if (this.state !== 'playing' || !this.isDragging) return;
+                
+                if (this.controlMode === 'sliding') {
+                    const diffY = clientY - this.touchStartY;
+                    const threshold = 35; // px swipe threshold
+                    if (Math.abs(diffY) > threshold) {
+                        if (diffY < 0) {
+                            this.changeLane(-1);
+                        } else {
+                            this.changeLane(1);
+                        }
+                        this.touchStartY = clientY; // continuous reset
+                    }
+                }
+            };
+
+            const handleEnd = () => {
+                this.isDragging = false;
+            };
+
+            canvasContainer.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                if (this.state === 'playing') {
+                    if (this.controlMode === 'tapping') {
+                        const lane = getLaneTapFromEvent(e);
+                        if (lane !== null) {
+                            e.preventDefault();
+                            this.setLane(lane);
+                            return;
+                        }
+                    } else if (this.controlMode === 'sliding') {
+                        e.preventDefault();
+                        handleStart(touch.clientX, touch.clientY);
+                    }
+                }
+                this.handleTouchInput(e);
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchmove', (e) => {
+                if (this.state === 'playing' && this.controlMode === 'sliding') {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    handleMove(touch.clientX, touch.clientY);
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchend', (e) => {
+                handleEnd();
+            });
+
+            canvasContainer.addEventListener('mousedown', (e) => {
+                if (this.state === 'playing') {
+                    if (this.controlMode === 'tapping') {
+                        const lane = getLaneTapFromEvent(e);
+                        if (lane !== null) {
+                            e.preventDefault();
+                            this.setLane(lane);
+                            return;
+                        }
+                    } else if (this.controlMode === 'sliding') {
+                        e.preventDefault();
+                        handleStart(e.clientX, e.clientY);
+                    }
+                }
+                this.handleTouchInput(e);
+            });
+
+            canvasContainer.addEventListener('mousemove', (e) => {
+                if (e.buttons === 1 && this.state === 'playing' && this.controlMode === 'sliding') {
+                    handleMove(e.clientX, e.clientY);
+                }
+            });
+
+            canvasContainer.addEventListener('mouseup', () => {
+                handleEnd();
+            });
+
+            canvasContainer.addEventListener('mouseleave', () => {
+                handleEnd();
+            });
+        }
+
+
         // Keyboard controls (Up/Down arrows, Spacebar)
         window.addEventListener('keydown', (e) => {
             if (this.state === 'playing') {
@@ -3682,6 +3989,19 @@ const Game = {
         if (hudHighScore) hudHighScore.textContent = this.highScore;
     },
     
+    
+    
+    addScore(amount) {
+        this.score += amount;
+        document.getElementById('hud-score-val').textContent = this.score;
+        
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            const hudHighScore = document.getElementById('hud-highscore-val');
+            if (hudHighScore) hudHighScore.textContent = this.highScore;
+        }
+    },
+    
     resizeCanvas() {
         this.canvas.width = this.V_WIDTH;
         this.canvas.height = this.V_HEIGHT;
@@ -3704,9 +4024,17 @@ const Game = {
             nextLane = Math.max(0, Math.min(this.numLanes - 1, nextLane));
         }
         
-        if (nextLane !== this.player.currentLane) {
-            this.player.currentLane = nextLane;
-            this.player.targetY = this.getLaneCenterY(nextLane) - this.player.height / 2;
+        this.setLane(nextLane);
+    },
+    
+    setLane(laneIndex) {
+        if (this.state !== 'playing') return;
+        
+        laneIndex = Math.max(0, Math.min(this.numLanes - 1, laneIndex));
+        
+        if (laneIndex !== this.player.currentLane) {
+            this.player.currentLane = laneIndex;
+            this.player.targetY = this.getLaneCenterY(laneIndex) - this.player.height / 2;
             this.createSkidParticles();
             
             // Play chiptune lane shift audio
@@ -3720,31 +4048,12 @@ const Game = {
     },
     
     handleTouchInput(e) {
-        if (this.state !== 'playing') {
-            if (this.state === 'crashed') {
-                const timeSinceCrash = performance.now() - this.crashTime;
-                if (timeSinceCrash > 500) {
-                    this.resetGame('playing');
-                }
+        // Tap canvas area to restart after a crash
+        if (this.state === 'crashed') {
+            const timeSinceCrash = performance.now() - this.crashTime;
+            if (timeSinceCrash > 500) {
+                this.resetGame('playing');
             }
-            return;
-        }
-        
-        const rect = this.canvas.getBoundingClientRect();
-        let clientY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clientY = e.touches[0].clientY;
-        } else {
-            clientY = e.clientY;
-        }
-        
-        const relativeY = ((clientY - rect.top) / rect.height) * this.V_HEIGHT;
-        
-        if (relativeY < this.V_HEIGHT / 2) {
-            this.changeLane(-1);
-        } else {
-            this.changeLane(1);
         }
     },
     
@@ -3865,6 +4174,8 @@ const Game = {
     },
     
     resetGame(targetState) {
+        const isRestartAfterCrash = (this.state === 'crashed');
+
         // If starting, transition to countdown first
         if (targetState === 'playing') {
             this.state = 'countdown';
@@ -3873,12 +4184,17 @@ const Game = {
             this.state = targetState;
         }
         
+        if (isRestartAfterCrash) {
+            this.score = 0;
+            this.level = 1;
+        } else {
+            this.score = targetState === 'menu' ? 0 : this.score;
+            this.level = targetState === 'menu' ? 1 : this.level;
+        }
+        
         // Progressive scaling variables based on level
         this.gameSpeed = 4.5 + (this.level - 1) * 0.9; 
         this.obstacleSpawnInterval = Math.max(1400 - (this.level * 80), 900);
-        
-        this.score = targetState === 'menu' ? 0 : this.score;
-        this.level = targetState === 'menu' ? 1 : this.level;
         this.roundTime = 0;
         this.finishLineSpawned = false;
         this.victoryTimer = 0;
@@ -3930,6 +4246,7 @@ const Game = {
         document.getElementById('hud-level-val').textContent = this.level;
         document.getElementById('hud-speed-val').textContent = `${Math.round(60 + this.gameSpeed * 10)} MPH`;
         
+
         // Reset Progress Bar
         const progFill = document.getElementById('race-progress-fill');
         const progMark = document.getElementById('race-progress-marker');
@@ -3960,7 +4277,7 @@ const Game = {
         }
     },
     
-    crash() {
+    async crash() {
         this.state = 'crashed';
         this.crashTime = performance.now();
         this.createCrashParticles();
@@ -3972,7 +4289,7 @@ const Game = {
         
         const driverName = document.getElementById('hud-driver-name').textContent;
         const carPreset = document.getElementById('car-preset').value;
-        const isRecord = Leaderboard.submitScore(driverName, carPreset, this.level, this.score);
+        const isRecord = await Leaderboard.submitScore(driverName, carPreset, this.level, this.score);
         
         setTimeout(() => {
             document.getElementById('go-score-val').textContent = this.score;
@@ -4006,8 +4323,7 @@ const Game = {
         
         // Award finish line bonus points!
         const bonus = 200;
-        this.score += bonus;
-        document.getElementById('hud-score-val').textContent = this.score;
+        this.addScore(bonus);
         
         // Trigger screen announcement
         const banner = document.getElementById('level-up-banner');
@@ -4200,8 +4516,7 @@ const Game = {
                         const firstUnpassed = matchesX.find(o => !o.passed);
                         
                         if (!firstUnpassed) {
-                            this.score += 10;
-                            document.getElementById('hud-score-val').textContent = this.score;
+                            this.addScore(10);
                         }
                     }
                 }
@@ -4302,12 +4617,92 @@ const Game = {
         
         // 5. Draw Player Car
         this.drawPlayer();
-        
         // 6. Draw Countdown overlay text
         if (this.state === 'countdown') {
             this.drawCountdownOverlay();
         }
+        
+        // 7. Draw lane control buttons on top of everything (always visible)
+        if (this.state === 'playing' || this.state === 'countdown') {
+            this.drawLaneButtons();
+        }
     },
+
+    drawLaneButtons() {
+        if (this.controlMode !== 'tapping') return;
+        const ctx = this.ctx;
+        const W = this.V_WIDTH;
+        const H = this.V_HEIGHT;
+        const btnW = 68;
+        const third = H / 3;
+
+        const buttons = [
+            { y: 0,         h: third,  lane: 0, arrow: 'UP',  color: '#ff5722', glow: 'rgba(255,87,34,0.6)' },
+            { y: third,     h: third,  lane: 1, arrow: 'MID', color: '#39ff14', glow: 'rgba(57,255,20,0.6)'  },
+            { y: third * 2, h: third,  lane: 2, arrow: 'DN',  color: '#ff5722', glow: 'rgba(255,87,34,0.6)' },
+        ];
+
+        buttons.forEach(btn => {
+            const isActive = this.player.currentLane === btn.lane;
+            const bx = 5;
+            const by = btn.y + 10;
+            const bw = btnW - 10;
+            const bh = btn.h - 20;
+            const cx = bx + bw / 2;
+            const cy = by + bh / 2;
+
+            // Button background
+            ctx.save();
+            ctx.globalAlpha = isActive ? 0.72 : 0.52;
+            const grad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+            grad.addColorStop(0, btn.lane === 1 ? 'rgba(20,60,20,0.9)' : 'rgba(40,15,10,0.9)');
+            grad.addColorStop(1, btn.lane === 1 ? 'rgba(10,30,10,0.6)' : 'rgba(20,8,5,0.6)');
+            ctx.fillStyle = grad;
+            ctx.strokeStyle = isActive ? btn.color : (btn.lane === 1 ? 'rgba(57,255,20,0.7)' : 'rgba(255,87,34,0.7)');
+            ctx.lineWidth = isActive ? 2.5 : 1.5;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(bx, by, bw, bh, 10);
+            } else {
+                ctx.rect(bx, by, bw, bh);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Glow on active
+            if (isActive) {
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                ctx.shadowColor = btn.color;
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = btn.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 10);
+                else ctx.rect(bx, by, bw, bh);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Arrow icon
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = isActive ? btn.color : '#ffffff';
+            ctx.font = `bold ${Math.round(bh * 0.32)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const arrowChar = btn.lane === 0 ? '▲' : btn.lane === 2 ? '▼' : '◀';
+            ctx.fillText(arrowChar, cx, cy - bh * 0.12);
+
+            // Label
+            ctx.font = `bold ${Math.round(bh * 0.18)}px Arial`;
+            ctx.fillStyle = isActive ? btn.color : 'rgba(220,200,180,0.9)';
+            ctx.fillText(btn.arrow, cx, cy + bh * 0.28);
+            ctx.restore();
+        });
+    },
+
     
     drawParallaxBackground() {
         // Sky Layer (Synthwave Purple Grid Sky)

@@ -78,6 +78,12 @@ const Game = {
     // Colors / Sprite references from Pixelator
     playerSpriteCanvas: null,
     paintColor: '#7b1fa2',
+
+    // Mobile controls setup
+    controlMode: 'tapping', // 'tapping' or 'sliding'
+    touchStartY: 0,
+    touchStartX: 0,
+    isDragging: false,
     
     init() {
         this.canvas = document.getElementById('game-canvas');
@@ -98,38 +104,122 @@ const Game = {
         if (restartBtn) restartBtn.addEventListener('click', () => this.resetGame('playing'));
         if (menuBtn) menuBtn.addEventListener('click', () => this.resetGame('menu'));
         
-        // Canvas touch/click — detect lane button zones (left strip of screen)
+        // Control Mode Selector
+        const controlModeSelect = document.getElementById('control-mode');
+        if (controlModeSelect) {
+            this.controlMode = localStorage.getItem('mopar_outlaws_control_mode') || 'tapping';
+            controlModeSelect.value = this.controlMode;
+            controlModeSelect.addEventListener('change', (e) => {
+                this.controlMode = e.target.value;
+                localStorage.setItem('mopar_outlaws_control_mode', this.controlMode);
+            });
+        }
+
+        // Canvas touch/click and swipe controls
         const canvasContainer = document.getElementById('canvas-container');
-        const getLaneTapFromEvent = (e) => {
-            const touch = e.touches ? e.touches[0] : e;
-            if (!touch) return null;
-            const rect = this.canvas.getBoundingClientRect();
-            const scaleX = this.V_WIDTH / rect.width;
-            const scaleY = this.V_HEIGHT / rect.height;
-            const vx = (touch.clientX - rect.left) * scaleX;
-            const vy = (touch.clientY - rect.top) * scaleY;
-            if (vx > 80) return null; // not in button zone
-            if (vy < this.V_HEIGHT / 3) return 0;
-            if (vy < (this.V_HEIGHT * 2) / 3) return 1;
-            return 2;
-        };
+        if (canvasContainer) {
+            const getLaneTapFromEvent = (e) => {
+                const touch = e.touches ? e.touches[0] : e;
+                if (!touch) return null;
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.V_WIDTH / rect.width;
+                const scaleY = this.V_HEIGHT / rect.height;
+                const vx = (touch.clientX - rect.left) * scaleX;
+                const vy = (touch.clientY - rect.top) * scaleY;
+                if (vx > 80) return null; // not in button zone
+                if (vy < this.V_HEIGHT / 3) return 0;
+                if (vy < (this.V_HEIGHT * 2) / 3) return 1;
+                return 2;
+            };
 
-        canvasContainer.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (this.state === 'playing') {
-                const lane = getLaneTapFromEvent(e);
-                if (lane !== null) { this.setLane(lane); return; }
-            }
-            this.handleTouchInput(e);
-        }, { passive: false });
+            const handleStart = (clientX, clientY) => {
+                this.touchStartY = clientY;
+                this.touchStartX = clientX;
+                this.isDragging = true;
+            };
 
-        canvasContainer.addEventListener('mousedown', (e) => {
-            if (this.state === 'playing') {
-                const lane = getLaneTapFromEvent(e);
-                if (lane !== null) { this.setLane(lane); return; }
-            }
-            this.handleTouchInput(e);
-        });
+            const handleMove = (clientX, clientY) => {
+                if (this.state !== 'playing' || !this.isDragging) return;
+                
+                if (this.controlMode === 'sliding') {
+                    const diffY = clientY - this.touchStartY;
+                    const threshold = 35; // px swipe threshold
+                    if (Math.abs(diffY) > threshold) {
+                        if (diffY < 0) {
+                            this.changeLane(-1);
+                        } else {
+                            this.changeLane(1);
+                        }
+                        this.touchStartY = clientY; // continuous reset
+                    }
+                }
+            };
+
+            const handleEnd = () => {
+                this.isDragging = false;
+            };
+
+            canvasContainer.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                if (this.state === 'playing') {
+                    if (this.controlMode === 'tapping') {
+                        const lane = getLaneTapFromEvent(e);
+                        if (lane !== null) {
+                            e.preventDefault();
+                            this.setLane(lane);
+                            return;
+                        }
+                    } else if (this.controlMode === 'sliding') {
+                        e.preventDefault();
+                        handleStart(touch.clientX, touch.clientY);
+                    }
+                }
+                this.handleTouchInput(e);
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchmove', (e) => {
+                if (this.state === 'playing' && this.controlMode === 'sliding') {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    handleMove(touch.clientX, touch.clientY);
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchend', (e) => {
+                handleEnd();
+            });
+
+            canvasContainer.addEventListener('mousedown', (e) => {
+                if (this.state === 'playing') {
+                    if (this.controlMode === 'tapping') {
+                        const lane = getLaneTapFromEvent(e);
+                        if (lane !== null) {
+                            e.preventDefault();
+                            this.setLane(lane);
+                            return;
+                        }
+                    } else if (this.controlMode === 'sliding') {
+                        e.preventDefault();
+                        handleStart(e.clientX, e.clientY);
+                    }
+                }
+                this.handleTouchInput(e);
+            });
+
+            canvasContainer.addEventListener('mousemove', (e) => {
+                if (e.buttons === 1 && this.state === 'playing' && this.controlMode === 'sliding') {
+                    handleMove(e.clientX, e.clientY);
+                }
+            });
+
+            canvasContainer.addEventListener('mouseup', () => {
+                handleEnd();
+            });
+
+            canvasContainer.addEventListener('mouseleave', () => {
+                handleEnd();
+            });
+        }
 
 
         // Keyboard controls (Up/Down arrows, Spacebar)
@@ -829,6 +919,7 @@ const Game = {
     },
 
     drawLaneButtons() {
+        if (this.controlMode !== 'tapping') return;
         const ctx = this.ctx;
         const W = this.V_WIDTH;
         const H = this.V_HEIGHT;
