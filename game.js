@@ -569,6 +569,7 @@ const Game = {
     },
     
     resetGame(targetState) {
+        const wasCrashed = (this.state === 'crashed');
         let isLevelTransition = false;
         if (this.isTransitioningLevel) {
             isLevelTransition = true;
@@ -587,19 +588,33 @@ const Game = {
             this.score = 0;
             this.level = 1;
         } else if (targetState === 'playing') {
-            if (!isLevelTransition) {
+            if (wasCrashed || !isLevelTransition) {
                 this.score = 0;
                 this.level = 1;
             }
         }
         
-        // Progressive scaling variables based on level
-        if (this.level < 6) {
-            this.gameSpeed = 4.5 + (this.level - 1) * 0.2;
-            this.obstacleSpawnInterval = 1450 - (this.level - 1) * 50;
+        // Detect if mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        
+        // Progressive scaling variables based on level & device type
+        if (isMobile) {
+            if (this.level < 6) {
+                this.gameSpeed = 4.5 + (this.level - 1) * 0.2;
+                this.obstacleSpawnInterval = 1450 - (this.level - 1) * 50;
+            } else {
+                this.gameSpeed = 6.0 + (this.level - 6) * 0.7;
+                this.obstacleSpawnInterval = 1100 - (this.level - 6) * 100;
+            }
         } else {
-            this.gameSpeed = 6.0 + (this.level - 6) * 0.7;
-            this.obstacleSpawnInterval = 1100 - (this.level - 6) * 100;
+            // Desktop speed: faster base speed
+            if (this.level < 6) {
+                this.gameSpeed = 5.4 + (this.level - 1) * 0.25;
+                this.obstacleSpawnInterval = 1350 - (this.level - 1) * 50;
+            } else {
+                this.gameSpeed = 7.1 + (this.level - 6) * 0.7;
+                this.obstacleSpawnInterval = 1050 - (this.level - 6) * 100;
+            }
         }
         this.gameSpeed = Math.min(this.gameSpeed, 8.5);
         this.obstacleSpawnInterval = Math.max(this.obstacleSpawnInterval, 850);
