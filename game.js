@@ -18,6 +18,7 @@ const Game = {
     score: 0,
     highScore: 0,
     level: 1,
+    isTransitioningLevel: false,
     gameSpeed: 4.5, // Base scrolling speed
     
     // Road/Lane layout specifications
@@ -568,7 +569,11 @@ const Game = {
     },
     
     resetGame(targetState) {
-        const isRestartAfterCrash = (this.state === 'crashed');
+        let isLevelTransition = false;
+        if (this.isTransitioningLevel) {
+            isLevelTransition = true;
+            this.isTransitioningLevel = false;
+        }
 
         // If starting, transition to countdown first
         if (targetState === 'playing') {
@@ -578,12 +583,14 @@ const Game = {
             this.state = targetState;
         }
         
-        if (isRestartAfterCrash) {
+        if (targetState === 'menu') {
             this.score = 0;
             this.level = 1;
-        } else {
-            this.score = targetState === 'menu' ? 0 : this.score;
-            this.level = targetState === 'menu' ? 1 : this.level;
+        } else if (targetState === 'playing') {
+            if (!isLevelTransition) {
+                this.score = 0;
+                this.level = 1;
+            }
         }
         
         // Progressive scaling variables based on level
@@ -737,6 +744,7 @@ const Game = {
     
     nextLevel() {
         this.level++;
+        this.isTransitioningLevel = true;
         document.getElementById('level-up-banner').classList.remove('visible');
         
         // Start next level with countdown
