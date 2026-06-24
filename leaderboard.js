@@ -38,7 +38,13 @@ const DB = {
             if (!text || text.includes("null") || text.includes("Error")) return [];
             
             const decoded = this.base64UrlDecode(text.trim().replace(/^"|"$/g, ''));
-            return JSON.parse(decoded);
+            const parsed = JSON.parse(decoded);
+            if (parsed && parsed.scores && Array.isArray(parsed.scores)) {
+                return parsed.scores;
+            } else if (parsed && Array.isArray(parsed)) {
+                return parsed;
+            }
+            return [];
         } catch (e) {
             console.error("Error fetching global scores:", e);
             return null;
@@ -47,7 +53,8 @@ const DB = {
     
     async saveGlobalScores(scores) {
         try {
-            const json = JSON.stringify(scores);
+            const payload = { scores: scores };
+            const json = JSON.stringify(payload);
             const encoded = this.base64UrlEncode(json);
             
             const controller = new AbortController();
@@ -82,8 +89,15 @@ const Leaderboard = {
         const modal = document.getElementById('leaderboard-modal');
         const resetBtn = document.getElementById('reset-scores-btn');
 
+        const triggerHighScoreUpdate = () => {
+            if (window.Game && typeof window.Game.updateHighScoreFromGlobal === 'function') {
+                window.Game.updateHighScoreFromGlobal();
+            }
+        };
+
         if (viewBtn && modal) {
-            viewBtn.addEventListener('click', async () => {
+            const openModal = async (e) => {
+                if (e) e.preventDefault();
                 this.populateTables();
                 modal.classList.add('active');
                 
@@ -92,19 +106,31 @@ const Leaderboard = {
                 if (globalScores && globalScores.length > 0) {
                     this.setScores(globalScores);
                     this.populateTables(globalScores);
+                    triggerHighScoreUpdate();
                 }
-            });
+            };
+            viewBtn.addEventListener('click', openModal);
+            viewBtn.addEventListener('touchstart', openModal, { passive: false });
         }
 
         if (closeBtn && modal) {
-            closeBtn.addEventListener('click', () => {
+            const closeModal = (e) => {
+                if (e) e.preventDefault();
                 modal.classList.remove('active');
-            });
+            };
+            closeBtn.addEventListener('click', closeModal);
+            closeBtn.addEventListener('touchstart', closeModal, { passive: false });
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
                 }
             });
+            modal.addEventListener('touchstart', (e) => {
+                if (e.target === modal) {
+                    e.preventDefault();
+                    modal.classList.remove('active');
+                }
+            }, { passive: false });
         }
 
         if (resetBtn) {
@@ -113,6 +139,7 @@ const Leaderboard = {
                     this.clearScores();
                     this.populateTables();
                     await DB.saveGlobalScores(this.defaultScores);
+                    triggerHighScoreUpdate();
                 }
             });
         }
@@ -125,12 +152,18 @@ const Leaderboard = {
         // Render initial UI lists immediately from local storage
         this.populateTables();
         
+        // Auto-open leaderboard modal on page load
+        if (modal) {
+            modal.classList.add('active');
+        }
+
         // Load global scores immediately on page load
         try {
             const globalScores = await DB.getGlobalScores();
             if (globalScores && globalScores.length > 0) {
                 this.setScores(globalScores);
                 this.populateTables(globalScores);
+                triggerHighScoreUpdate();
             }
         } catch (e) {
             console.warn("Could not sync global leaderboard on load:", e);
@@ -143,6 +176,7 @@ const Leaderboard = {
                 if (globalScores && globalScores.length > 0) {
                     this.setScores(globalScores);
                     this.populateTables(globalScores);
+                    triggerHighScoreUpdate();
                 }
             } catch (e) { /* silent fail on auto-refresh */ }
         }, 30000);
@@ -224,6 +258,9 @@ const Leaderboard = {
         // 2. Save locally and globally
         this.setScores(scores);
         await DB.saveGlobalScores(scores);
+        if (window.Game && typeof window.Game.updateHighScoreFromGlobal === 'function') {
+            window.Game.updateHighScoreFromGlobal();
+        }
         
         // Refresh UI
         this.populateTables(scores);
@@ -286,9 +323,9 @@ const Leaderboard = {
                     
                     tr.innerHTML = `
                         <td class="rank-col">#${index + 1}</td>
-                        <td class="driver-col">${item.name}</td>
-                        <td class="car-col">${item.car}</td>
-                        <td class="level-col">${item.level}</td>
+                        <td class="driver-col">${item.name || 'HEMI_DEMON'}</td>
+                        <td class="car-col">${item.car || 'Charger Daytona'}</td>
+                        <td class="level-col">${item.level !== undefined ? item.level : 1}</td>
                         <td class="score-col">${item.score}</td>
                     `;
                     rowsContainer.appendChild(tr);
@@ -304,6 +341,8 @@ const Leaderboard = {
         return score > scores[0].score;
     }
 };
+
+window.Leaderboard = Leaderboard;
 
 // Auto run on load
 window.addEventListener('DOMContentLoaded', () => {

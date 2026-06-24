@@ -34,7 +34,8 @@ const Game = {
         height: 36,
         currentLane: 1, // 0 = Top, 1 = Middle, 2 = Bottom
         angle: 0,
-        targetY: 392
+        targetY: 392,
+        targetX: 60
     },
     
     // Police chaser specs
@@ -100,9 +101,18 @@ const Game = {
         const restartBtn = document.getElementById('restart-btn');
         const menuBtn = document.getElementById('menu-btn');
         
-        if (startBtn) startBtn.addEventListener('click', () => this.startGame());
-        if (restartBtn) restartBtn.addEventListener('click', () => this.resetGame('playing'));
-        if (menuBtn) menuBtn.addEventListener('click', () => this.resetGame('menu'));
+        if (startBtn) {
+            startBtn.addEventListener('click', () => this.startGame());
+            startBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.startGame(); }, { passive: false });
+        }
+        if (restartBtn) {
+            restartBtn.addEventListener('click', () => this.resetGame('playing'));
+            restartBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.resetGame('playing'); }, { passive: false });
+        }
+        if (menuBtn) {
+            menuBtn.addEventListener('click', () => this.resetGame('menu'));
+            menuBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.resetGame('menu'); }, { passive: false });
+        }
         
         // Control Mode Selector
         const controlModeSelect = document.getElementById('control-mode');
@@ -132,26 +142,33 @@ const Game = {
                 return 2;
             };
 
+            const getVirtualCoords = (clientX, clientY) => {
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.V_WIDTH / rect.width;
+                const scaleY = this.V_HEIGHT / rect.height;
+                const vx = (clientX - rect.left) * scaleX;
+                const vy = (clientY - rect.top) * scaleY;
+                return { vx, vy };
+            };
+
             const handleStart = (clientX, clientY) => {
-                this.touchStartY = clientY;
-                this.touchStartX = clientX;
                 this.isDragging = true;
+                handleMove(clientX, clientY);
             };
 
             const handleMove = (clientX, clientY) => {
                 if (this.state !== 'playing' || !this.isDragging) return;
                 
                 if (this.controlMode === 'sliding') {
-                    const diffY = clientY - this.touchStartY;
-                    const threshold = 35; // px swipe threshold
-                    if (Math.abs(diffY) > threshold) {
-                        if (diffY < 0) {
-                            this.changeLane(-1);
-                        } else {
-                            this.changeLane(1);
-                        }
-                        this.touchStartY = clientY; // continuous reset
-                    }
+                    const { vx, vy } = getVirtualCoords(clientX, clientY);
+                    
+                    const minX = 10;
+                    const maxX = this.V_WIDTH - this.player.width - 10;
+                    const minY = this.roadTop;
+                    const maxY = this.roadBottom - this.player.height;
+                    
+                    this.player.targetX = Math.max(minX, Math.min(maxX, vx - this.player.width / 2));
+                    this.player.targetY = Math.max(minY, Math.min(maxY, vy - this.player.height / 2));
                 }
             };
 
@@ -221,6 +238,23 @@ const Game = {
             });
         }
 
+        // Fullscreen Toggle Button Listener
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        if (fullscreenBtn) {
+            const toggleFS = (e) => {
+                if (e) e.preventDefault();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+            fullscreenBtn.addEventListener('click', toggleFS);
+            fullscreenBtn.addEventListener('touchstart', toggleFS, { passive: false });
+        }
+
 
         // Keyboard controls (Up/Down arrows, Spacebar)
         window.addEventListener('keydown', (e) => {
@@ -244,7 +278,7 @@ const Game = {
         });
         
         // Load high score from selected car
-        this.updateHighScoreFromSelectedCar();
+        this.updateHighScoreFromGlobal();
         
         // 3 Seconds Splash Screen Auto-Fade transition
         setTimeout(() => {
@@ -264,17 +298,26 @@ const Game = {
         }, 3000);
     },
     
-    updateHighScoreFromSelectedCar() {
-        let activeCarHighScore = 0;
+    updateHighScoreFromGlobal() {
+        let globalHighScore = 0;
+        if (window.Leaderboard) {
+            const scores = window.Leaderboard.getScores();
+            if (scores && scores.length > 0) {
+                globalHighScore = scores[0].score;
+            }
+        }
+        
+        let localCarHighScore = 0;
         if (window.Pixelator) {
             const customCars = window.Pixelator.getCustomCars();
             const lastSelectedId = localStorage.getItem('mopar_outlaws_selected_car_id');
             const activeCar = customCars.find(c => c.id === lastSelectedId);
             if (activeCar) {
-                activeCarHighScore = activeCar.highScore || 0;
+                localCarHighScore = activeCar.highScore || 0;
             }
         }
-        this.highScore = activeCarHighScore;
+        
+        this.highScore = Math.max(globalHighScore, localCarHighScore);
         const hudHighScore = document.getElementById('hud-highscore-val');
         if (hudHighScore) hudHighScore.textContent = this.highScore;
     },
@@ -293,8 +336,61 @@ const Game = {
     },
     
     resizeCanvas() {
+        const isLandscape = window.innerWidth > window.innerHeight;
+        
+        if (isLandscape) {
+            this.V_WIDTH = 640;
+            this.V_HEIGHT = 360;
+            this.roadTop = 150;
+            this.roadBottom = 330;
+            this.roadHeight = 180;
+            this.player.width = 64;
+            this.player.height = 32;
+            this.police.width = 64;
+            this.police.height = 32;
+        } else {
+            this.V_WIDTH = 360;
+            this.V_HEIGHT = 640;
+            this.roadTop = 240;
+            this.roadBottom = 580;
+            this.roadHeight = 340;
+            this.player.width = 72;
+            this.player.height = 36;
+            this.police.width = 72;
+            this.police.height = 36;
+        }
+        
         this.canvas.width = this.V_WIDTH;
         this.canvas.height = this.V_HEIGHT;
+        
+        // Update positions if initialized
+        if (this.player) {
+            this.player.targetY = this.getLaneCenterY(this.player.currentLane) - this.player.height / 2;
+            if (this.state === 'menu' || this.state === 'countdown') {
+                this.player.y = this.player.targetY;
+                this.player.x = 60;
+                this.player.targetX = 60;
+            }
+        }
+        
+        if (this.police) {
+            this.police.targetY = this.player ? this.player.targetY : this.police.targetY;
+            if (this.state === 'menu' || this.state === 'countdown') {
+                this.police.y = this.police.targetY;
+                this.police.x = -120;
+            }
+        }
+        
+        if (this.obstacles) {
+            this.obstacles.forEach(obs => {
+                if (obs.type !== 'startLine' && obs.type !== 'finishLine') {
+                    obs.y = this.getLaneCenterY(obs.lane) - obs.height / 2;
+                } else {
+                    obs.y = this.roadTop;
+                    obs.height = this.roadHeight;
+                }
+            });
+        }
     },
     
     getLaneCenterY(laneIndex) {
@@ -386,16 +482,24 @@ const Game = {
         // Stop spawning normal obstacles once the finish line is triggered
         if (this.finishLineSpawned) return;
         
-        const patterns = [
-            [0],    // Block top lane only
-            [1],    // Block middle lane only
-            [2],    // Block bottom lane only
-            [0, 1], // Block top & middle
-            [1, 2], // Block middle & bottom
-            [0, 2]  // Block top & bottom
-        ];
+        let doubleChance = 0;
+        if (this.level === 1) {
+            doubleChance = 0;
+        } else if (this.level === 2) {
+            doubleChance = 0.3;
+        } else if (this.level === 3 || this.level === 4) {
+            doubleChance = 0.5;
+        } else { // Level 5+
+            doubleChance = 1.0;
+        }
+
+        const isDouble = Math.random() < doubleChance;
+        const singlePatterns = [[0], [1], [2]];
+        const doublePatterns = [[0, 1], [1, 2], [0, 2]];
         
-        const chosenPattern = patterns[Math.floor(Math.random() * patterns.length)];
+        const chosenPattern = isDouble 
+            ? doublePatterns[Math.floor(Math.random() * doublePatterns.length)]
+            : singlePatterns[Math.floor(Math.random() * singlePatterns.length)];
         const types = ['cone', 'barricade', 'pothole'];
         const type = types[Math.floor(Math.random() * types.length)];
         
@@ -459,7 +563,7 @@ const Game = {
         this.playerSpriteCanvas = Pixelator.spriteCanvas;
         this.paintColor = Pixelator.primaryColor;
         
-        this.updateHighScoreFromSelectedCar();
+        this.updateHighScoreFromGlobal();
         this.resetGame('playing');
     },
     
@@ -483,8 +587,17 @@ const Game = {
         }
         
         // Progressive scaling variables based on level
-        this.gameSpeed = 4.5 + (this.level - 1) * 0.9; 
-        this.obstacleSpawnInterval = Math.max(1400 - (this.level * 80), 900);
+        if (this.level < 5) {
+            this.gameSpeed = 4.5 + (this.level - 1) * 0.35;
+            this.obstacleSpawnInterval = 1400 - (this.level - 1) * 50;
+        } else {
+            this.gameSpeed = 5.9 + (this.level - 5) * 0.7;
+            this.obstacleSpawnInterval = 1200 - (this.level - 5) * 100;
+        }
+        this.gameSpeed = Math.min(this.gameSpeed, 8.5);
+        this.obstacleSpawnInterval = Math.max(this.obstacleSpawnInterval, 850);
+        this.roundDuration = Math.min(30000 + (this.level - 1) * 5000, 50000);
+        
         this.roundTime = 0;
         this.finishLineSpawned = false;
         this.victoryTimer = 0;
@@ -493,6 +606,7 @@ const Game = {
         this.player.targetY = this.getLaneCenterY(1) - this.player.height / 2;
         this.player.y = this.player.targetY;
         this.player.x = 60; // reset horizontal position
+        this.player.targetX = 60;
         this.player.angle = 0;
         
         // Reset Police Cruiser
@@ -509,8 +623,8 @@ const Game = {
         this.hazardBlinkTimer = 0;
         this.hazardBlinkOn = true;
         
-        // Load high score from selected custom car
-        this.updateHighScoreFromSelectedCar();
+        // Load high score from selected custom car (universal top score)
+        this.updateHighScoreFromGlobal();
         
         // Audio synthesis control
         if (window.AudioEngine) {
@@ -654,7 +768,7 @@ const Game = {
         // 1. Scroll backgrounds
         if (this.state === 'playing' || isCountdown || this.state === 'victory') {
             this.skyScroll = (this.skyScroll + currentScrollSpeed * 0.04) % this.V_WIDTH;
-            this.cityScroll = (this.cityScroll + currentScrollSpeed * 0.12) % this.V_WIDTH;
+            this.cityScroll = (this.cityScroll + currentScrollSpeed * 0.12) % 390;
             this.highwayScroll = (this.highwayScroll + currentScrollSpeed * 1.0) % this.V_WIDTH;
             
             // Blinking timer
@@ -686,12 +800,15 @@ const Game = {
             }
         }
         
-        // 4. Smoothly glide car Y coordinates
+        // 4. Smoothly glide car coordinates (Y and X for 2D sliding)
         if (this.state === 'playing' || isCountdown || this.state === 'crashed' || this.state === 'victory') {
             const dy = this.player.targetY - this.player.y;
+            const targetX = this.controlMode === 'sliding' ? (this.player.targetX ?? 60) : 60;
+            const dx = targetX - this.player.x;
             
             if (this.state === 'playing' || isCountdown) {
                 this.player.y += dy * 0.18;
+                this.player.x += dx * 0.18;
                 this.player.angle = dy * 0.04 * (Math.PI / 180);
                 
                 // Tail smoke particles
@@ -1025,11 +1142,12 @@ const Game = {
         this.ctx.fillStyle = '#0f0b21';
         const skylineHeight = [35, 65, 45, 90, 60, 75, 50, 105, 70, 85, 45, 60, 75];
         const buildingWidth = 30;
+        const totalSkylineWidth = skylineHeight.length * buildingWidth; // 390
         
-        const currentScrollSpeed = this.state === 'countdown' ? this.gameSpeed * 0.2 : this.gameSpeed;
+        const neededTiles = Math.ceil(this.V_WIDTH / totalSkylineWidth) + 1;
         
-        for (let tile = 0; tile < 2; tile++) {
-            let offset = -this.cityScroll + (tile * this.V_WIDTH);
+        for (let tile = 0; tile < neededTiles; tile++) {
+            let offset = -this.cityScroll + (tile * totalSkylineWidth);
             skylineHeight.forEach((height, i) => {
                 const x = offset + (i * buildingWidth);
                 const y = this.roadTop - height;
@@ -1182,15 +1300,35 @@ const Game = {
                 }
                 
             } else if (obs.type === 'pothole') {
-                ctx.fillStyle = '#0a0812';
+                // High-visibility neon/synthwave style potholes
+                ctx.fillStyle = '#200b3b'; // deep purple center fill
                 ctx.beginPath();
                 ctx.ellipse(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width / 2, obs.height / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                ctx.strokeStyle = '#27223d';
-                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#d8b4fe'; // thick lavender outline
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.ellipse(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width / 2 - 1, obs.height / 2 - 1, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Neon-pink cracked highlights (#f472b6)
+                ctx.strokeStyle = '#f472b6';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                const cx = obs.x + obs.width / 2;
+                const cy = obs.y + obs.height / 2;
+                // Crack 1: from center towards top-left
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx - obs.width * 0.25, cy - obs.height * 0.2);
+                ctx.lineTo(cx - obs.width * 0.35, cy - obs.height * 0.1);
+                // Crack 2: from center towards bottom-right
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + obs.width * 0.2, cy + obs.height * 0.25);
+                ctx.lineTo(cx + obs.width * 0.3, cy + obs.height * 0.15);
+                // Crack 3: a small branch
+                ctx.moveTo(cx - obs.width * 0.1, cy + obs.height * 0.1);
+                ctx.lineTo(cx - obs.width * 0.2, cy + obs.height * 0.3);
                 ctx.stroke();
             }
         });
@@ -1376,6 +1514,8 @@ const Game = {
         this.ctx.restore();
     }
 };
+
+window.Game = Game;
 
 // Start setup
 window.addEventListener('DOMContentLoaded', () => {

@@ -1435,3 +1435,173 @@ select:focus {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 20px rgba(57, 255, 20, 0.7);
 }
 
+/* Floating Fullscreen Button */
+.fullscreen-toggle-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10000;
+    background: rgba(15, 10, 30, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+.fullscreen-toggle-btn:hover {
+    background: rgba(255, 87, 34, 0.2);
+    border-color: var(--accent-orange);
+    color: var(--accent-orange);
+    transform: scale(1.05);
+}
+
+#game-over-screen {
+    z-index: 1000 !important;
+}
+
+/* Mobile Landscape Styles */
+@media (max-height: 550px) and (orientation: landscape) {
+    #app-container {
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        height: 100% !important;
+    }
+    
+    /* Compact Header & Titles */
+    .game-title {
+        margin-bottom: 4px;
+    }
+    .game-title .title-top {
+        font-size: 24px;
+    }
+    .game-title .title-bottom {
+        font-size: 30px;
+    }
+    .subtitle {
+        font-size: 10px;
+        margin-bottom: 10px;
+    }
+    
+    /* Customizer Layout Row */
+    .customizer-layout {
+        flex-direction: row;
+        gap: 12px;
+        padding: 8px;
+    }
+    .sprite-preview-container {
+        padding: 6px;
+    }
+    .canvas-preview-wrapper {
+        width: 128px;
+        height: 64px;
+    }
+    .customizer-controls {
+        gap: 8px;
+    }
+    .form-group {
+        margin-bottom: 6px;
+    }
+    .form-group label {
+        font-size: 10px;
+        margin-bottom: 2px;
+    }
+    .form-group input, .form-group select {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    
+    /* Gallery Grid */
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 6px;
+        max-height: 100px;
+    }
+    
+    /* Action Box & Footer */
+    .action-box {
+        margin-top: 8px;
+    }
+    #start-btn {
+        padding: 10px 20px;
+    }
+    #start-btn .btn-subtext {
+        display: none; /* hide subtext to save height */
+    }
+    
+    /* Compact Gameplay HUD */
+    #game-hud {
+        padding: 6px 12px;
+    }
+    .hud-item {
+        padding: 3px 6px;
+        gap: 4px;
+    }
+    .hud-label {
+        font-size: 8px;
+    }
+    .hud-val, .hud-val-highlight {
+        font-size: 12px;
+    }
+    #hud-score-container {
+        font-size: 18px;
+    }
+    #race-progress-container {
+        margin-top: 2px;
+        max-width: 120px;
+    }
+    .progress-track {
+        height: 6px;
+    }
+    #race-progress-marker {
+        font-size: 10px;
+        top: -6px;
+    }
+    
+    /* Compact Game Over Panel */
+    .modal-panel {
+        max-width: 440px;
+        padding: 12px 18px !important;
+    }
+    .crash-title {
+        font-size: 24px !important;
+        margin-bottom: 4px !important;
+    }
+    .crash-cause {
+        font-size: 10px !important;
+        margin-bottom: 10px !important;
+    }
+    .score-summary-grid {
+        margin: 6px 0 !important;
+        gap: 10px !important;
+    }
+    .score-card {
+        padding: 8px !important;
+    }
+    .score-card .card-label {
+        font-size: 8px !important;
+    }
+    .score-card .card-val, .score-card .card-val-highlight {
+        font-size: 18px !important;
+    }
+    .new-record-badge {
+        font-size: 11px !important;
+        margin: 4px 0 !important;
+        padding: 4px !important;
+    }
+    .game-over-actions {
+        flex-direction: row !important;
+        gap: 10px !important;
+        margin-top: 8px !important;
+    }
+    .game-over-actions button {
+        flex: 1;
+        padding: 10px 16px !important;
+        font-size: 11px !important;
+    }
+}
+
